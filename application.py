@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # coding: utf-8
 from wsgiref.simple_server import WSGIServer, WSGIRequestHandler
+from templite import Templite
+import os
 
 
 class Jay(object):
@@ -219,5 +221,27 @@ def tranfer_out_url(url):
     # 为啥WSGIRequestHandler的作者要转成iso-8859-1 ??? 标准库也这么坑人...
     return quote(url.encode("iso-8859-1"), safe='/:?=')
 
+
+class TemplateException(Exception):
+    pass
+
+
+class TemplateNotExist(TemplateException):
+    pass
+
+
+def render_template(html_name, **context):
+    path = os.getcwd()+"\\template\\"+html_name
+    if_exist = os.path.exists(path)
+    if if_exist:
+        try:
+            with open(path, "r", encoding="utf8") as fin:
+                html = fin.read()
+            text = Templite(html)
+        except IOError:
+            raise
+    else:
+        raise TemplateNotExist("the %r is not exist" % html_name)
+    return text.render(context)
 
 request = Request()
