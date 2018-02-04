@@ -42,10 +42,12 @@ class Application(object):
         no_param_has_match = True  # 是否匹配到无参数的
 
         try:  # 无参数的
-            applications = self.path_info[environ['PATH_INFO']]
+            url = tranfer_out_url(environ['PATH_INFO'])
+            applications = self.path_info[url]
         except KeyError:
             try:
-                applications = self.path_info[environ['PATH_INFO'] + '/']
+                url = tranfer_out_url(environ['PATH_INFO'] + '/')
+                applications = self.path_info[url]
             except KeyError:
                 no_param_has_match = False
                 self.has_param_url(environ)
@@ -58,7 +60,7 @@ class Application(object):
                 application = applications[0]
                 self.content = application().encode("utf8")
 
-        response_headers = [('Content-type', 'text/html'),
+        response_headers = [('Content-type', 'text/html;charset=utf8'),
                             ('Content-Length', str(len(self.content)))]
         start_response(self.status, response_headers)
         return [self.content]
@@ -67,7 +69,8 @@ class Application(object):
         try:  # 有'<param>'参数的
             urls = environ['PATH_INFO'].split("/")
             param = urls[-1]
-            applications = self.path_info['/'.join(urls[:-1])]
+            url = tranfer_out_url('/'.join(urls[:-1]))
+            applications = self.path_info[url]
             n = applications[1]
 
             if n == 0:
@@ -77,6 +80,8 @@ class Application(object):
                 param = int(param)
             elif n == 3:
                 param = float(param)
+            else:
+                param = tranfer_str(param)
 
             application = applications[0]
             self.content = application(param).encode("utf8")
@@ -100,7 +105,6 @@ class Application(object):
         self.server_port = port
 
         server = server_class((host, port), handler_class)
-
         server.set_app(self.app)  # 绑定application
 
         return server
@@ -109,7 +113,7 @@ class Application(object):
 
         server = self.make_server(host, port, server_class, handler_class)  # 调用make_server
 
-        print("A server is running", self.remote_addr, "port:", self.server_port, "...")
+        print("A server is running", self.remote_addr[:-1] + ":" + str(self.server_port) + "/ ...")
         server.serve_forever()
 
     def route(self, path):
@@ -131,6 +135,7 @@ class Application(object):
                 else:
                     n = 1
 
+            need_path = tranfer_url(need_path)
             self.path_info[need_path] = application, n
         return wrapper
 
@@ -141,6 +146,26 @@ class ServerException(Exception):
 
 class PortException(ServerException):
     pass
+
+
+def tranfer_url(url):
+    from urllib.parse import quote  # 转码url
+    return quote(url, safe='/:?=')
+
+
+def tranfer_str(url):
+    # 解码url, 默认url会被转换成ascii, 显示时会解码成iso-8859-1格式
+    # 这里要把它再解码转码成utf-8
+    # 为啥WSGIRequestHandler的作者要转成iso-8859-1 ??? 标准库也这么坑人...
+    return url.encode("iso-8859-1").decode('utf8')
+
+
+def tranfer_out_url(url):
+    from urllib.parse import quote  # 转码url
+    # 转码url, 默认url会被转换成ascii, 显示时会解码成iso-8859-1格式
+    # 这里要把它再解码转码成url
+    # 为啥WSGIRequestHandler的作者要转成iso-8859-1 ??? 标准库也这么坑人...
+    return quote(url.encode("iso-8859-1"), safe='/:?=')
 
 
 app = Application()
@@ -156,10 +181,10 @@ def index():
     return "Hello, world!"
 
 
-@app.route('/my/<int:n>')
+@app.route('/my 唉/<int:n>')
 def my(n):
     num = n / 100
-    return "your level is " + str(num)
+    return "比率为 " + str(num)
 
 
 if __name__ == '__main__':
