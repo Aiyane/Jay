@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # coding: utf-8
 from wsgiref.simple_server import WSGIServer, WSGIRequestHandler
 
@@ -34,8 +35,10 @@ class Application(object):
         return server
 
     def run(self, host='', port=8080, server_class=None, handler_class=None):
-        with self.make_server(host, port, server_class, handler_class) as server:
-            server.serve_forever()
+        server = self.make_server(host, port, server_class, handler_class)
+        sa = server.socket.getsockname()
+        print("A server is running", sa[0], "port:", sa[1], "...")
+        server.serve_forever()
 
     def route(self, path):
         def wrapper(application):
@@ -57,6 +60,7 @@ app = Application()
 @app.route('/')
 def hello_world():
     return "Hello, world!"
+
 
 if __name__ == '__main__':
     app.run()
