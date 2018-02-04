@@ -7,11 +7,11 @@ app = Jay()
 
 
 @app.route('/')
-def hello():
+def index():
     return 'Hello!'
 
 
-@app.route('/hello')
+app.route('/hello')
 def hello():
     return 'Hello, world!'
 
