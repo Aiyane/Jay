@@ -68,9 +68,15 @@ class Application(object):
             urls = environ['PATH_INFO'].split("/")
             param = urls[-1]
             applications = self.path_info['/'.join(urls[:-1])]
+            n = applications[1]
 
-            if applications[1] == 0:
+            if n == 0:
                 raise KeyError
+
+            if n == 2:
+                param = int(param)
+            elif n == 3:
+                param = float(param)
 
             application = applications[0]
             self.content = application(param).encode("utf8")
@@ -150,9 +156,10 @@ def index():
     return "Hello, world!"
 
 
-@app.route('/my/')
-def my():
-    return "Hello, my!"
+@app.route('/my/<int:n>')
+def my(n):
+    num = n / 100
+    return "your level is " + str(num)
 
 
 if __name__ == '__main__':
