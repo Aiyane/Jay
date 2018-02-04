@@ -10,7 +10,7 @@
 
 ```py
 
-from application import Jay, request
+from application import Jay, request, render_template
 
 app = Jay()
 
@@ -32,13 +32,63 @@ def my(n):
     num = n/100
     return "your level is " + str(num)
 
+@app.route('/students/')
+def student():
+    people1 = {"name": "张三", "age": "18", "major": "计算机"}
+    people2 = {"name": "lisi", "age": "19", "major": "金融"}
+    people3 = {"name": "王五", "age": "20", "major": "法律"}
+
+    many_people = [
+        people1,
+        people2,
+        people3
+    ]
+    return render_template("model.html", many_people=many_people, upper=my_upper)
+
+def my_upper(name):
+    return name.upper()
+
 if __name__ == "__main__":
     app.run()
 ```
 
 `<cls:param>`这种写法现在支持int, float, 默认为str, 并不区分斜线, 支持对访问的方法判断
 
-### 说明
+### 模板引擎
+
+#### 函数
+
+render_template函数支持调用模板, 接收参数. 可以运行以上代码观察效果, 模板文件统一放在`template`文件夹, 模板引擎的源代码在`templite.py`.
+
+#### 语法
+
+现在实现的模板语法是类似与jinja的语法, 如下
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>测试</title>
+</head>
+<body>
+    {# 这里是注释 #}
+    {% for people in many_people %}
+        <h3>名字: {{ people.name|upper }}</h3>
+        <p>年龄: {{ people.age }}</p>
+        <p>专业: {{ people.major }}</p>
+        {% if people.name == "张三" %}
+            <a href="#">张三的链接</a>
+        {% endif %}
+    {% endfor %}
+</body>
+</html>
+```
+支持注释, for循环, if语句及其嵌套, 支持`|`调用函数, 例如{{ people.name|upper }}, 这里是将名字大写, (但是需要将函数当参数传入), 暂未实现模板的继承等其他用法
+
+### 其他说明
 
 ```py
 @app.route('/index')
