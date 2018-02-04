@@ -4,7 +4,6 @@ from wsgiref.simple_server import WSGIServer, WSGIRequestHandler
 
 
 class Jay(object):
-
     NotFindPage = """\
     <html>
     <head>
@@ -53,7 +52,7 @@ class Jay(object):
                 self.has_param_url(environ)
 
         if no_param_has_match:  # 匹配到无参数的
-            if applications[1] != 0:
+            if isinstance(applications[1], tuple):
                 self.status = '404 no found'
                 self.content = self.NotFindPage.encode("utf8")
             else:
@@ -71,7 +70,7 @@ class Jay(object):
             param = urls[-1]
             url = tranfer_out_url('/'.join(urls[:-1]))
             applications = self.path_info[url]
-            n = applications[1]
+            n = applications[1][0]
 
             if n == 0:
                 raise KeyError
@@ -118,6 +117,7 @@ class Jay(object):
 
     def route(self, path):
         """路由装饰器, 保存外部application与path关系"""
+
         def wrapper(application):
             n = 0
             need_path = path
@@ -129,15 +129,53 @@ class Jay(object):
                     cls, _param = keys.split(":")
                     cls = cls.strip()
                     if cls == "int":
-                        n = 2
+                        n = (2, _param[:-1])
                     elif cls == "float":
-                        n = 3
+                        n = (3, _param[:-1])
                 else:
-                    n = 1
+                    n = (1, keys[:-1])
 
             need_path = tranfer_url(need_path)
             self.path_info[need_path] = application, n
+
         return wrapper
+
+    def test_request_context(self):
+        return RequestContext(self.path_info)
+
+
+class RequestContext(object):
+
+    def __init__(self, path_info):
+        self.path_info = path_info
+
+    def __enter__(self):
+        global mapping
+        _path_info_ = dict((v, k) for k, v in self.path_info.items())
+        mapping = dict(
+            (k[0].__name__, (path, k[1]))
+            for k, path in _path_info_.items()
+        )
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        mapping.clear()
+
+
+def url_for(func_name, **keywords):
+    string = ''
+    tail = ''
+    for k, v in keywords.items():
+        try:
+            if mapping[func_name][1][1] == k:
+                tail += "/" + str(v)
+                continue
+        except TypeError:
+            pass
+        string += k + "=" + str(v) + "&"
+
+    if string:
+        return mapping[func_name][0] + tail + "?" + tranfer_url(string[:-1])
+    return mapping[func_name][0] + tail
 
 
 class ServerException(Exception):
@@ -166,26 +204,3 @@ def tranfer_out_url(url):
     # 这里要把它再解码转码成url
     # 为啥WSGIRequestHandler的作者要转成iso-8859-1 ??? 标准库也这么坑人...
     return quote(url.encode("iso-8859-1"), safe='/:?=')
-
-
-app = Application()
-
-
-@app.route('/hello/<name>')
-def hello_world(name):
-    return "Hello %s" % name
-
-
-@app.route('/')
-def index():
-    return "Hello, world!"
-
-
-@app.route('/my 唉/<int:n>')
-def my(n):
-    num = n / 100
-    return "比率为 " + str(num)
-
-
-if __name__ == '__main__':
-    app.run()
