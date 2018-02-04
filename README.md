@@ -52,7 +52,7 @@ if __name__ == "__main__":
     app.run()
 ```
 
-`<cls:param>`这种写法现在支持int, float, 默认为str, 并不区分斜线, 支持对访问的方法判断
+`<cls:param>`这种写法现在支持int, float, 默认为str, 并不区分斜线, 支持对请求的方法判断
 
 ### 模板引擎
 
@@ -62,7 +62,7 @@ render_template函数支持调用模板, 接收参数. 可以运行以上代码�
 
 #### 语法
 
-现在实现的模板语法是类似与jinja的语法, 如下
+现在实现的模板语法是类似于jinja的语法, 如下
 
 ```html
 <!DOCTYPE html>
@@ -86,7 +86,7 @@ render_template函数支持调用模板, 接收参数. 可以运行以上代码�
 </body>
 </html>
 ```
-支持注释, for循环, if语句及其嵌套, 支持`|`调用函数, 例如{{ people.name|upper }}, 这里是将名字大写, (但是需要将函数当参数传入), 暂未实现模板的继承等其他用法
+支持注释, for循环, if语句及其嵌套, 支持`|`调用函数, 例如{{ people.name|upper }}, 这里是将名字大写, (但是需要将函数当参数传入), 暂未实现模板的继承else语句等其他用法
 
 ### 其他说明
 
@@ -132,7 +132,7 @@ if __name__ == '__main__':
         print(url_for("hello_world", name="aiyane", age=16))
 ```
 
-会将参数当作url的参数结合进去, 而在application中定义的变量则会以'/'的形式接在url之后, 以上结果为
+会将参数当作url的参数结合进去, 而在application中定义的变量则会以'/'的形式接在url之后, 以上结果如下
 
 ```
 /?name=Aiyane
