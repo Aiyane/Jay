@@ -3,7 +3,7 @@
 from wsgiref.simple_server import WSGIServer, WSGIRequestHandler
 
 
-class Application(object):
+class Jay(object):
     def __init__(self):
         self.env = {}
         self.start = None
@@ -54,7 +54,7 @@ class PortException(ServerException):
     pass
 
 
-app = Application()
+app = Jay()
 
 
 @app.route('/')
