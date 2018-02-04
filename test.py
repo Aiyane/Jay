@@ -11,9 +11,14 @@ def index():
     return 'Hello!'
 
 
-app.route('/hello')
+@app.route('/hello')
 def hello():
     return 'Hello, world!'
+
+
+@app.route('/hello/<name>')
+def hello_world(name):
+    return "Hello %s" % name
 
 
 if __name__ == "__main__":
