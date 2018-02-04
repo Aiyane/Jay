@@ -20,7 +20,6 @@ class Jay(object):
     def __init__(self):
         self.remote_addr = ''
         self.server_port = 0
-        self.env = {}
         self.start = None
         self.content = ''
         self.server_class = None
@@ -28,9 +27,17 @@ class Jay(object):
         self.path = ''
         self.path_info = {}
         self.status = 0
+        self.allow_method = None
 
     def app(self, environ, start_response):
-        self.env = environ
+        request.env = environ
+
+        if self.allow_method is not None and environ["REQUEST_METHOD"] not in self.allow_method:
+            response_headers = [('Content-type', 'text/html')]
+            start_response("405 method error", response_headers)
+            return []
+
+        request.method = environ["REQUEST_METHOD"]
         self.path = environ['PATH_INFO']
 
         return self._app(environ, start_response)
@@ -115,8 +122,10 @@ class Jay(object):
         print("A server is running", self.remote_addr[:-1] + ":" + str(self.server_port) + "/ ...")
         server.serve_forever()
 
-    def route(self, path):
+    def route(self, path, methods=[]):
         """路由装饰器, 保存外部application与path关系"""
+        if methods:
+            self.allow_method = methods
 
         def wrapper(application):
             n = 0
@@ -142,6 +151,11 @@ class Jay(object):
 
     def test_request_context(self):
         return RequestContext(self.path_info)
+
+
+class Request(object):
+    def __init__(self):
+        self.env = {}
 
 
 class RequestContext(object):
@@ -204,3 +218,6 @@ def tranfer_out_url(url):
     # 这里要把它再解码转码成url
     # 为啥WSGIRequestHandler的作者要转成iso-8859-1 ??? 标准库也这么坑人...
     return quote(url.encode("iso-8859-1"), safe='/:?=')
+
+
+request = Request()
