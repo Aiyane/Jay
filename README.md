@@ -26,10 +26,16 @@ def hello():
 def hello_world(name):
     return "Hello %s!" % name
 
+@app.route('/my/<int:n>')
+def my(n):
+    num = n/100
+    return "your level is " + str(num)
 
 if __name__ == "__main__":
     app.run()
 ```
+
+`<cls:param>`这种写法现在支持int, float, 默认为str, 并不区分斜线.
 
 ### 说明
 
