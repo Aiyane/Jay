@@ -28,6 +28,7 @@ class Application(object):
         self.handler_class = None
         self.path = ''
         self.path_info = {}
+        self.status = 0
 
     def app(self, environ, start_response):
         self.env = environ
@@ -37,37 +38,46 @@ class Application(object):
 
     def _app(self, environ, start_response):
         """实际的application, 将外部的函数装换成一个符合WSGI接口的application"""
-        status = '200 OK'
+        self.status = '200 OK'
+        no_param_has_match = True  # 是否匹配到无参数的
 
         try:  # 无参数的
             applications = self.path_info[environ['PATH_INFO']]
-
-            if applications[1] != 0:
-                raise KeyError
-
-            application = applications[0]
-            self.content = application().encode("utf8")
-
         except KeyError:
-            try:  # 有'<param>'参数的
-                urls = environ['PATH_INFO'].split("/")
-                param = urls[-1]
-                applications = self.path_info['/'.join(urls[:-1])]
+            try:
+                applications = self.path_info[environ['PATH_INFO'] + '/']
+            except KeyError:
+                no_param_has_match = False
+                self.has_param_url(environ)
 
-                if applications[1] != 1:
-                    raise KeyError
-
-                application = applications[0]
-                self.content = application(param).encode("utf8")
-
-            except KeyError:  # 最后也没有返回404
-                status = '404 '
+        if no_param_has_match:  # 匹配到无参数的
+            if applications[1] != 0:
+                self.status = '404 no found'
                 self.content = self.NotFindPage.encode("utf8")
+            else:
+                application = applications[0]
+                self.content = application().encode("utf8")
 
         response_headers = [('Content-type', 'text/html'),
                             ('Content-Length', str(len(self.content)))]
-        start_response(status, response_headers)
+        start_response(self.status, response_headers)
         return [self.content]
+
+    def has_param_url(self, environ):
+        try:  # 有'<param>'参数的
+            urls = environ['PATH_INFO'].split("/")
+            param = urls[-1]
+            applications = self.path_info['/'.join(urls[:-1])]
+
+            if applications[1] == 0:
+                raise KeyError
+
+            application = applications[0]
+            self.content = application(param).encode("utf8")
+
+        except KeyError:  # 最后也没有返回404
+            self.status = '404 no found'
+            self.content = self.NotFindPage.encode("utf8")
 
     def make_server(self, host, port, server_class, handler_class):
         """初始化服务器"""
@@ -99,13 +109,23 @@ class Application(object):
     def route(self, path):
         """路由装饰器, 保存外部application与path关系"""
         def wrapper(application):
+            n = 0
+            need_path = path
 
             if "<" in path:  # 如果在url中有参数
-                paths = path.split("/<", 1)
-                self.path_info[paths[0]] = application, 1
+                need_path, keys = path.split("/<", 1)
 
-            else:
-                self.path_info[path] = application, 0
+                if ":" in keys:
+                    cls, _param = keys.split(":")
+                    cls = cls.strip()
+                    if cls == "int":
+                        n = 2
+                    elif cls == "float":
+                        n = 3
+                else:
+                    n = 1
+
+            self.path_info[need_path] = application, n
         return wrapper
 
 
@@ -128,6 +148,12 @@ def hello_world(name):
 @app.route('/')
 def index():
     return "Hello, world!"
+
+
+@app.route('/my/')
+def my():
+    return "Hello, my!"
+
 
 if __name__ == '__main__':
     app.run()
