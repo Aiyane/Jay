@@ -10,7 +10,7 @@
 
 ```py
 
-from application import Jay
+from application import Jay, request
 
 app = Jay()
 
@@ -18,9 +18,10 @@ app = Jay()
 def index():
     return 'Hello!'
 
-@app.route('/hello')
+@app.route('/hello', methods=["GET", "POST"])
 def hello():
-    return 'Hello, world!'
+    if request.method == "GET":
+        return 'Hello, world!'
 
 @app.route('/hello/<name>')
 def hello_world(name):
@@ -35,7 +36,7 @@ if __name__ == "__main__":
     app.run()
 ```
 
-`<cls:param>`这种写法现在支持int, float, 默认为str, 并不区分斜线.
+`<cls:param>`这种写法现在支持int, float, 默认为str, 并不区分斜线, 支持对访问的方法判断
 
 ### 说明
 
