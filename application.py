@@ -3,7 +3,7 @@
 from wsgiref.simple_server import WSGIServer, WSGIRequestHandler
 
 
-class Application(object):
+class Jay(object):
 
     NotFindPage = """\
     <html>
