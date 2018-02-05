@@ -1,11 +1,22 @@
 #!/usr/bin/env python3
 # coding: utf-8
+from __future__ import print_function  # 兼容python2
+# from __future__ import unicode_literals
 from wsgiref.simple_server import WSGIServer, WSGIRequestHandler
 from templite import Templite
 import os
 
+try:  # 兼容python2
+    from urllib.parse import quote
+except ImportError:
+    from urllib import quote
+
 
 class Jay(object):
+    """
+    基础处理application的类
+    """
+    # 404错误页面
     NotFindPage = """\
     <html>
     <head>
@@ -32,13 +43,15 @@ class Jay(object):
         self.allow_method = None
 
     def app(self, environ, start_response):
-        request.env = environ
+        """application外部接口, 接收响应时会初始化request的参数"""
 
+        # 检查是否是允许的方法在访问
         if self.allow_method is not None and environ["REQUEST_METHOD"] not in self.allow_method:
             response_headers = [('Content-type', 'text/html')]
             start_response("405 method error", response_headers)
             return []
-
+        # 初始化request
+        request.env = environ
         request.method = environ["REQUEST_METHOD"]
         self.path = environ['PATH_INFO']
 
@@ -48,8 +61,9 @@ class Jay(object):
         """实际的application, 将外部的函数装换成一个符合WSGI接口的application"""
         self.status = '200 OK'
         no_param_has_match = True  # 是否匹配到无参数的
+        applications = None
 
-        try:  # 无参数的
+        try:  # 在url中无参数的
             url = tranfer_out_url(environ['PATH_INFO'])
             applications = self.path_info[url]
         except KeyError:
@@ -74,7 +88,7 @@ class Jay(object):
         return [self.content]
 
     def has_param_url(self, environ):
-        try:  # 有'<param>'参数的
+        try:  # 在url中有'<param>'参数的
             urls = environ['PATH_INFO'].split("/")
             param = urls[-1]
             url = tranfer_out_url('/'.join(urls[:-1]))
@@ -118,9 +132,14 @@ class Jay(object):
         return server
 
     def run(self, host='', port=8080, server_class=WSGIServer, handler_class=WSGIRequestHandler):
-
+        """
+        外部接口函数, 运行服务器等待请求
+        :param host: host
+        :param port: port
+        :param server_class: 服务器类
+        :param handler_class: 处理类
+        """
         server = self.make_server(host, port, server_class, handler_class)  # 调用make_server
-
         print("A server is running", self.remote_addr[:-1] + ":" + str(self.server_port) + "/ ...")
         server.serve_forever()
 
@@ -152,20 +171,31 @@ class Jay(object):
         return wrapper
 
     def test_request_context(self):
+        """处理上下文"""
         return RequestContext(self.path_info)
 
 
 class Request(object):
+    """
+    存储请求的相关信息
+    """
     def __init__(self):
         self.env = {}
 
 
 class RequestContext(object):
+    """
+    处理上下文的类, 在with语句中会先执行__enter__方法, 后执行with里, 最后执行__exit__方法
+    """
 
     def __init__(self, path_info):
+        """
+        :param path_info:将Jay实例中的path_info字典的key和value颠倒的字典, 目的是为了通过函数名得到url
+        """
         self.path_info = path_info
 
     def __enter__(self):
+        # 全局变量mapping, key是函数名, value是对应的路径
         global mapping
         _path_info_ = dict((v, k) for k, v in self.path_info.items())
         mapping = dict(
@@ -178,6 +208,7 @@ class RequestContext(object):
 
 
 def url_for(func_name, **keywords):
+    """应该在RequestContext类被调用时调用, 返回application函数对应的url, 同时接收参数构造特定url"""
     string = ''
     tail = ''
     for k, v in keywords.items():
@@ -195,15 +226,17 @@ def url_for(func_name, **keywords):
 
 
 class ServerException(Exception):
+    """服务端错误"""
     pass
 
 
 class PortException(ServerException):
+    """端口错误"""
     pass
 
 
 def tranfer_url(url):
-    from urllib.parse import quote  # 转码url
+    # 转码url
     return quote(url, safe='/:?=')
 
 
@@ -215,7 +248,6 @@ def tranfer_str(url):
 
 
 def tranfer_out_url(url):
-    from urllib.parse import quote  # 转码url
     # 转码url, 默认url会被转换成ascii, 显示时会解码成iso-8859-1格式
     # 这里要把它再解码转码成url
     # 为啥WSGIRequestHandler的作者要转成iso-8859-1 ??? 标准库也这么坑人...
@@ -223,20 +255,28 @@ def tranfer_out_url(url):
 
 
 class TemplateException(Exception):
+    """模板错误"""
     pass
 
 
 class TemplateNotExist(TemplateException):
+    """未发现模板的错误"""
     pass
 
 
 def render_template(html_name, **context):
-    path = os.getcwd() + "\\template\\" + html_name
+    """
+    调用html模板, 返回结果
+    :param html_name: html模板文件名
+    :param context: 需要传递的参数
+    :return: 解析出的文本
+    """
+    path = os.getcwd() + "/template/" + html_name
     if_exist = os.path.exists(path)
     if if_exist:
         try:
-            with open(path, "r", encoding="utf8") as fin:
-                html = fin.read()
+            with open(path, "rb") as fin:
+                html = fin.read().decode("utf8")
             text = Templite(html)
         except IOError:
             raise
@@ -245,4 +285,5 @@ def render_template(html_name, **context):
     return text.render(context)
 
 
+# 存储请求的相关信息, 在客户端未发送数据之前是空的, 在客户端发送数据之后会将请求的数据保存
 request = Request()

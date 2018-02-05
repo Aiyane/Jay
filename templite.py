@@ -116,22 +116,27 @@ class Templite(object):
 
         tokens = re.split(r"(?s)({{.*?}}|{%.*?%}|{#.*?#})", text)
 
-        if tokens[1].startswith("{%"):
+        if tokens[1].startswith("{%"):  # 从这里开始就是为了处理模板的继承
             words = tokens[1][2:-2].strip().split()
             if words[0] == "extends":
+                # base_block: 存的是block的名字为key, 起始位置与末位置为value
+                # base_name: 是临时的block的名字
+                # merge_page: 是生成的目标html
                 base_block = {}
                 base_name = ''
                 merge_page = []
-                try:
-                    path = os.getcwd()+"\\template\\"+words[1][1:-1]
-                    with open(path, "r", encoding="utf8") as fin:
-                        base_tokens = re.split(r"(?s)({{.*?}}|{%.*?%}|{#.*?#})", fin.read())
-                except IOError:
-                    raise self._syntax_error("Don't understand extends", tokens[0])
-                
+                try:  # 初始化基础模板
+                    path = os.getcwd() + "/template/" + words[1][1:-1]
+                    with open(path, "rb") as fin:
+                        base_tokens = re.split(r"(?s)({{.*?}}|{%.*?%}|{#.*?#})", fin.read().decode("utf8"))
+                except IOError:  # 不能打开基础模板
+                    raise self._syntax_error("Don't open the base model", tokens[0])
+
+                # start_index: 是记录block开始的位置
+                # start_collection: 是块开始的标志
                 start_index = 0
                 start_collection = False
-                for i, base_token in enumerate(base_tokens):
+                for i, base_token in enumerate(base_tokens):  # 处理基础模板
                     if base_token.startswith("{%"):
                         words = base_token[2:-2].strip().split()
                         if words[0] == "block":
@@ -139,18 +144,19 @@ class Templite(object):
                                 raise self._syntax_error("Don't understand block", base_token)
                             base_name = words[1]
                             start_index = i
-                            
+
                         elif words[0] == "endblock":
                             if len(words) != 1 or base_name == '':
                                 raise self._syntax_error("Don't understand endblock", base_token)
                             base_block[base_name] = start_index, i
                             base_name = ''
-                
+
+                # end_index: 是基础当前块的结尾位置
                 end_index = 0
-                for kid_token in tokens[2:]:
+                for kid_token in tokens[2:]:  # 处理子模板
                     if kid_token.startswith("{%"):
                         words = kid_token[2:-2].strip().split()
-                        
+
                         if words[0] == "block":
                             if len(words) != 2 or start_collection:
                                 raise self._syntax_error("Don't understand block", kid_token)
@@ -162,7 +168,7 @@ class Templite(object):
                             end_index = _i + 1
                             start_collection = True
                             continue
-                            
+
                         elif words[0] == "endblock":
                             if len(words) != 1 or not start_collection:
                                 raise self._syntax_error("Don't understand endblock", kid_token)
@@ -185,7 +191,7 @@ class Templite(object):
 
                 merge_page.extend(base_tokens[end_index:])
                 tokens = merge_page
-                            
+
         for token in tokens:
             if token.startswith('{#'):
                 # 注释: 忽略注释符中的内容
