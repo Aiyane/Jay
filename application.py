@@ -2,6 +2,7 @@
 # coding: utf-8
 from __future__ import print_function  # 兼容python2
 # from __future__ import unicode_literals
+
 from wsgiref.simple_server import WSGIServer, WSGIRequestHandler
 from templite import Templite
 import os
@@ -60,24 +61,34 @@ class Jay(object):
     def _app(self, environ, start_response):
         """实际的application, 将外部的函数装换成一个符合WSGI接口的application"""
         self.status = '200 OK'
-        no_param_has_match = True  # 是否匹配到无参数的
-        applications = None
 
-        try:  # 在url中无参数的
-            url = tranfer_out_url(environ['PATH_INFO'])
-            applications = self.path_info[url]
-        except KeyError:
-            try:
-                url = tranfer_out_url(environ['PATH_INFO'] + '/')
-                applications = self.path_info[url]
-            except KeyError:
-                no_param_has_match = False
-                self.has_param_url(environ)
+        url = tranfer_out_url(environ['PATH_INFO'])
+        applications = self.path_info.get(url)
+        urls = []
+        if applications is None:
+            url = url + "/"  # 匹配增加"/"的url
+            applications = self.path_info.get(url)
+            if applications is None:
+                urls = environ['PATH_INFO'][::-1].split("/", 1)
+                url = tranfer_out_url(urls[1][::-1])
+                applications = self.path_info.get(url)
+                if applications is None:
+                    self.status = '404 no found'
+                    self.content = self.NotFindPage.encode("utf8")
 
-        if no_param_has_match:  # 匹配到无参数的
+        if applications is not None:  # 匹配到无参数的
+            # 无参匹配的applications[1]应该是0
             if isinstance(applications[1], tuple):
-                self.status = '404 no found'
-                self.content = self.NotFindPage.encode("utf8")
+                param = urls[0][::-1]
+                n = applications[1][0]
+                if n == 2:
+                    param = int(param)
+                elif n == 3:
+                    param = float(param)
+                elif n == 1:
+                    param = tranfer_str(param)
+                application = applications[0]
+                self.content = application(param).encode("utf8")
             else:
                 application = applications[0]
                 self.content = application().encode("utf8")
@@ -86,31 +97,6 @@ class Jay(object):
                             ('Content-Length', str(len(self.content)))]
         start_response(self.status, response_headers)
         return [self.content]
-
-    def has_param_url(self, environ):
-        try:  # 在url中有'<param>'参数的
-            urls = environ['PATH_INFO'].split("/")
-            param = urls[-1]
-            url = tranfer_out_url('/'.join(urls[:-1]))
-            applications = self.path_info[url]
-            n = applications[1][0]
-
-            if n == 0:
-                raise KeyError
-
-            if n == 2:
-                param = int(param)
-            elif n == 3:
-                param = float(param)
-            else:
-                param = tranfer_str(param)
-
-            application = applications[0]
-            self.content = application(param).encode("utf8")
-
-        except KeyError:  # 最后也没有返回404
-            self.status = '404 no found'
-            self.content = self.NotFindPage.encode("utf8")
 
     def make_server(self, host, port, server_class, handler_class):
         """初始化服务器"""
@@ -271,6 +257,7 @@ def render_template(html_name, **context):
     :param context: 需要传递的参数
     :return: 解析出的文本
     """
+    # if platform.platform().startswith("win")
     path = os.getcwd() + "/template/" + html_name
     if_exist = os.path.exists(path)
     if if_exist:
@@ -283,7 +270,6 @@ def render_template(html_name, **context):
     else:
         raise TemplateNotExist("the %r is not exist" % html_name)
     return text.render(context)
-
 
 # 存储请求的相关信息, 在客户端未发送数据之前是空的, 在客户端发送数据之后会将请求的数据保存
 request = Request()
