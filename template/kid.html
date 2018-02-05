@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block head %}
+    <p>这是kid的head</p>
+{% endblock %}
+
+{% block middle %}
+    <p>这是kid的middle</p>
+    {{ super() }}
+{% endblock %}
