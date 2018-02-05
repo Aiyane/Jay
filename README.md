@@ -4,7 +4,7 @@
 
 ### 测试
 
-目前已写出一个小玩具, 在根目录下linux运行 `python3 test.py`或者windows安装了python3的运行 `python test.py` 打开浏览器输入 `http://localhost:8080/` 或者 `http://localhost:8080/hello` 即可.
+目前已写出一个小玩具, 在根目录下linux运行 `python3 test.py`或者windows安装了python3的运行 `python test.py` 打开浏览器输入 `http://localhost:8080/` 或者 `http://localhost:8080/hello/world` 即可.
 
 ### 目前用法
 
@@ -213,4 +213,6 @@ if __name__ == '__main__':
 /my%20%E5%94%89/5
 /hello/aiyane?age=16
 ```
+### 问题
 
+在python2版本, 中文编码会出错
