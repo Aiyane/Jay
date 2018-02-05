@@ -5,6 +5,7 @@
 """
 
 import re
+import os
 
 
 class TempliteSyntaxError(ValueError):
@@ -115,6 +116,76 @@ class Templite(object):
 
         tokens = re.split(r"(?s)({{.*?}}|{%.*?%}|{#.*?#})", text)
 
+        if tokens[1].startswith("{%"):
+            words = tokens[1][2:-2].strip().split()
+            if words[0] == "extends":
+                base_block = {}
+                base_name = ''
+                merge_page = []
+                try:
+                    path = os.getcwd()+"\\template\\"+words[1][1:-1]
+                    with open(path, "r", encoding="utf8") as fin:
+                        base_tokens = re.split(r"(?s)({{.*?}}|{%.*?%}|{#.*?#})", fin.read())
+                except IOError:
+                    raise self._syntax_error("Don't understand extends", tokens[0])
+                
+                start_index = 0
+                start_collection = False
+                for i, base_token in enumerate(base_tokens):
+                    if base_token.startswith("{%"):
+                        words = base_token[2:-2].strip().split()
+                        if words[0] == "block":
+                            if len(words) != 2 or base_name != '':
+                                raise self._syntax_error("Don't understand block", base_token)
+                            base_name = words[1]
+                            start_index = i
+                            
+                        elif words[0] == "endblock":
+                            if len(words) != 1 or base_name == '':
+                                raise self._syntax_error("Don't understand endblock", base_token)
+                            base_block[base_name] = start_index, i
+                            base_name = ''
+                
+                end_index = 0
+                for kid_token in tokens[2:]:
+                    if kid_token.startswith("{%"):
+                        words = kid_token[2:-2].strip().split()
+                        
+                        if words[0] == "block":
+                            if len(words) != 2 or start_collection:
+                                raise self._syntax_error("Don't understand block", kid_token)
+                            try:
+                                start_index, _i = base_block[words[1]]
+                            except KeyError:
+                                raise self._syntax_error("Don't find block", kid_token)
+                            merge_page.extend(base_tokens[end_index:start_index])
+                            end_index = _i + 1
+                            start_collection = True
+                            continue
+                            
+                        elif words[0] == "endblock":
+                            if len(words) != 1 or not start_collection:
+                                raise self._syntax_error("Don't understand endblock", kid_token)
+                            start_collection = False
+                            continue
+
+                    # 处理super()方法
+                    if kid_token.startswith("{{"):
+                        word = kid_token[2:-2].strip()
+                        if word == "super()":
+                            if not start_collection:
+                                raise self._syntax_error("Error super()", kid_token)
+                            merge_page.extend(base_tokens[start_index:end_index-1])
+                            continue
+
+                    elif start_collection:
+                        merge_page.append(kid_token)
+                    elif kid_token.strip():
+                        raise self._syntax_error("The model codes aren't in block", kid_token)
+
+                merge_page.extend(base_tokens[end_index:])
+                tokens = merge_page
+                            
         for token in tokens:
             if token.startswith('{#'):
                 # 注释: 忽略注释符中的内容
@@ -159,6 +230,10 @@ class Templite(object):
                     if len(words) != 1:
                         self._syntax_error("Don't understand end", token)
                     end_what = words[0][3:]
+
+                    if end_what == "block":
+                        continue
+
                     if not ops_stack:
                         self._syntax_error("Too many ends", token)
 
@@ -172,7 +247,7 @@ class Templite(object):
                         self._syntax_error("Mismatched end tag", end_what)
                     code.dedent()
 
-                elif words[0].startswith("else"):
+                elif words[0] == "else":
                     # else 语句
                     if len(words) != 1 or (ops_stack[-1] != "if" and ops_stack[-1] != "elif"):
                         self._syntax_error("Don't understand else", token)
@@ -181,7 +256,7 @@ class Templite(object):
                     code.add_line("else:")
                     code.indent()
 
-                elif words[0].startswith("elif"):
+                elif words[0] == "elif":
                     # elif 语句
                     if ops_stack[-1] != "if" and ops_stack[-1] != "elif":
                         self._syntax_error("Don't understand elif", token)
@@ -197,6 +272,8 @@ class Templite(object):
                     code.add_line("elif %s:" % ' '.join(_content))
                     code.indent()
 
+                elif words[0] == "block" or words[0] == "extends":
+                    continue
                 else:
                     self._syntax_error("Don't understand tag", words[0])
             else:
