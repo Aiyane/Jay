@@ -165,6 +165,15 @@ class Templite(object):
                     if start_what != end_what:
                         self._syntax_error("Mismatched end tag", end_what)
                     code.dedent()
+
+                elif words[0].startswith("else"):
+                    # else 语句
+                    if len(words) != 1 or ops_stack[-1] != "if":
+                        self._syntax_error("Don't understand else", token)
+                    code.dedent()
+                    code.add_line("else:")
+                    code.indent()
+
                 else:
                     self._syntax_error("Don't understand tag", words[0])
             else:

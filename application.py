@@ -231,7 +231,7 @@ class TemplateNotExist(TemplateException):
 
 
 def render_template(html_name, **context):
-    path = os.getcwd()+"\\template\\"+html_name
+    path = os.getcwd() + "\\template\\" + html_name
     if_exist = os.path.exists(path)
     if if_exist:
         try:
@@ -243,5 +243,6 @@ def render_template(html_name, **context):
     else:
         raise TemplateNotExist("the %r is not exist" % html_name)
     return text.render(context)
+
 
 request = Request()
