@@ -81,8 +81,10 @@ render_template函数支持调用模板, 接收参数. 可以运行以上代码�
         <p>专业: {{ people.major }}</p>
         {% if people.name == "张三" %}
             <a href="#">张三的链接</a>
+        {% elif people.name == "lisi" %}
+            <a href="#">lisi的链接</a>
         {% else %}
-            <a href="#">不是张三的链接</a>
+            <a href="#">王五的链接</a>
         {% endif %}
     {% endfor %}
 </body>

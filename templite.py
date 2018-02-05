@@ -161,17 +161,40 @@ class Templite(object):
                     end_what = words[0][3:]
                     if not ops_stack:
                         self._syntax_error("Too many ends", token)
-                    start_what = ops_stack.pop()
+
+                    while 1:  # 处理else或elif
+                        start_what = ops_stack.pop()
+                        if start_what == "else" or start_what == "elif":
+                            continue
+                        break
+
                     if start_what != end_what:
                         self._syntax_error("Mismatched end tag", end_what)
                     code.dedent()
 
                 elif words[0].startswith("else"):
                     # else 语句
-                    if len(words) != 1 or ops_stack[-1] != "if":
+                    if len(words) != 1 or (ops_stack[-1] != "if" and ops_stack[-1] != "elif"):
                         self._syntax_error("Don't understand else", token)
+                    ops_stack.append('else')
                     code.dedent()
                     code.add_line("else:")
+                    code.indent()
+
+                elif words[0].startswith("elif"):
+                    # elif 语句
+                    if ops_stack[-1] != "if" and ops_stack[-1] != "elif":
+                        self._syntax_error("Don't understand elif", token)
+                    ops_stack.append('elif')
+                    code.dedent()
+                    _content = []
+                    for word in words[1:]:
+                        if re.match(r"[_a-zA-Z][_a-zA-Z0-9]*(\.[_a-zA-Z][_a-zA-Z0-9]*)*$", word):
+                            _content.append(self._expr_code(word))
+                            continue
+                        _content.append(word)
+
+                    code.add_line("elif %s:" % ' '.join(_content))
                     code.indent()
 
                 else:
