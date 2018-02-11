@@ -271,5 +271,6 @@ def render_template(html_name, **context):
         raise TemplateNotExist("the %r is not exist" % html_name)
     return text.render(context)
 
+
 # 存储请求的相关信息, 在客户端未发送数据之前是空的, 在客户端发送数据之后会将请求的数据保存
 request = Request()
